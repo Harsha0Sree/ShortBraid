@@ -1,7 +1,9 @@
 services: 
 
   web: 
-
+    depends_on:
+     - db
+     - redis
     build: .
 
     ports:
