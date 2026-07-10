@@ -1,13 +1,15 @@
+from fastapi import APIRouter
 from fastapi import FastAPI
 
 app = FastAPI()
+router = APIRouter(prefix="/api/v1",tags=["/api/v1"])
+app.include_router(router)
 
 
 def main():
     pass
 
-@app.get("/api/v1/ingest")
-def upload():
+
     
 
 
