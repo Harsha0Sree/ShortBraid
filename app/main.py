@@ -1,5 +1,14 @@
+from fastapi import FastAPI
+
+app = FastAPI()
+
+
 def main():
-    print("Hello from shortbraid!")
+    pass
+
+@app.get("/api/v1/ingest")
+def upload():
+    
 
 
 if __name__ == "__main__":
