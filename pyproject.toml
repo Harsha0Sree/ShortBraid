@@ -1,20 +1,23 @@
 [project]
-name = "headroom-ccr"
-version = "0.1.0"
-description = "Production-grade LLM ingestion & retrieval platform with Reversible Compression (CCR)"
-requires-python = ">=3.11"
+name = "shortbraid"
+version = "0.2.0"
+description = "Production-grade LLM context compression, reversible retrieval (CCR), transparent proxy & agent memory"
+requires-python = ">=3.10"
 license = { text = "MIT" }
-authors = [{ name = "Headroom CCR" }]
+authors = [{ name = "ShortBraid Team" }]
+readme = "README.md"
 
 dependencies = [
-    # Web framework
+    # Core CLI & utilities
+    "click>=8.1.0",
+    # Web framework & proxy
     "fastapi>=0.111.0",
     "uvicorn[standard]>=0.30.0",
     "python-multipart>=0.0.9",
     # Config
     "pydantic>=2.7.0",
     "pydantic-settings>=2.3.0",
-    # DB (raw, no ORM — per Day 1 spec)
+    # DB & raw storage
     "asyncpg>=0.29.0",
     "pgvector>=0.3.0",
     # Redis / queues
@@ -22,7 +25,7 @@ dependencies = [
     "arq>=0.25.0",
     # Object storage (S3 / MinIO)
     "boto3>=1.34.0",
-    # HTTP client for OpenAI
+    # HTTP client for upstream LLMs / OpenAI / Anthropic
     "httpx>=0.27.0",
     "tenacity>=8.3.0",
     # Observability
@@ -35,6 +38,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+all = [
+    "tiktoken>=0.7.0",
+]
 dev = [
     "pytest>=8.2.0",
     "pytest-asyncio>=0.23.0",
@@ -43,7 +49,11 @@ dev = [
     "black>=24.4.0",
     "locust>=2.27.0",
     "mypy>=1.10.0",
+    "tiktoken>=0.7.0",
 ]
+
+[project.scripts]
+shortbraid = "shortbraid.cli.main:main"
 
 [build-system]
 requires = ["setuptools>=68.0"]
@@ -51,7 +61,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["app*"]
+include = ["shortbraid*"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
@@ -59,9 +69,9 @@ testpaths = ["tests"]
 
 [tool.black]
 line-length = 100
-target-version = ["py311"]
+target-version = ["py310", "py311", "py312", "py313"]
 
 [tool.flake8]
 max-line-length = 100
 extend-ignore = ["E203", "W503"]
-exclude = [".git", "__pycache__", "build", "dist"]
+exclude = [".git", "__pycache__", "build", "dist", ".venv"]
