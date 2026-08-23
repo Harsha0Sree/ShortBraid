@@ -19,11 +19,11 @@ from typing import Optional
 # Allow running as a script (not a package) — must come before app.* imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.config import get_settings  # noqa: E402
-from app.db import init_pool, close_pool  # noqa: E402
-from app.logging_config import configure_logging, get_logger  # noqa: E402
-from app.llm.openai_client import OpenAIError, create_embedding  # noqa: E402
-from app.metrics import llm_cost_usd_total  # noqa: E402
+from shortbraid.server.config import get_settings  # noqa: E402
+from shortbraid.server.db import init_pool, close_pool  # noqa: E402
+from shortbraid.server.logging_config import configure_logging, get_logger  # noqa: E402
+from shortbraid.server.llm.openai_client import OpenAIError, create_embedding  # noqa: E402
+from shortbraid.server.metrics import llm_cost_usd_total  # noqa: E402
 
 
 async def embed_one(chunk_id: Optional[str] = None) -> dict:

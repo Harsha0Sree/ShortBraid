@@ -15,8 +15,8 @@ import asyncpg
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from app.db import get_pool
-from app.logging_config import get_logger
+from shortbraid.server.db import get_pool
+from shortbraid.server.logging_config import get_logger
 
 log = get_logger(__name__)
 bearer_scheme = HTTPBearer(auto_error=False)

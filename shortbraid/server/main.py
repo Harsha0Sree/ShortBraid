@@ -20,17 +20,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.config import get_settings
-from app.db import close_pool, init_pool
-from app.logging_config import configure_logging, get_logger
-from app.metrics import (
+from shortbraid.server.config import get_settings
+from shortbraid.server.db import close_pool, init_pool
+from shortbraid.server.logging_config import configure_logging, get_logger
+from shortbraid.server.metrics import (
     api_latency_seconds,
     api_requests_total,
     in_flight_requests,
 )
-from app.minio_client import ensure_bucket_exists, init_s3
-from app.redis_client import close_redis, init_redis
-from app.routers import admin, chat, health, ingest, metrics as metrics_router
+from shortbraid.server.minio_client import ensure_bucket_exists, init_s3
+from shortbraid.server.redis_client import close_redis, init_redis
+from shortbraid.server.routers import admin, chat, health, ingest, metrics as metrics_router
 
 configure_logging()
 log = get_logger(__name__)
@@ -76,7 +76,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(
-    title="Headroom CCR",
+    title="ShortBraid",
     description="Production-grade LLM ingestion & retrieval with Reversible Compression (CCR)",
     version="0.1.0",
     lifespan=lifespan,
@@ -155,7 +155,7 @@ app.include_router(admin.router)
 @app.get("/")
 async def root() -> dict:
     return {
-        "name": "Headroom CCR",
+        "name": "ShortBraid",
         "version": "0.1.0",
         "docs": "/docs",
         "health": "/health",

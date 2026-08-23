@@ -15,15 +15,15 @@ from typing import Any, Optional
 
 from arq import create_pool
 from arq.connections import RedisSettings
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from pydantic import BaseModel, Field
 
-from app.auth import authenticate
-from app.config import get_settings
-from app.db import get_pool
-from app.logging_config import get_logger
-from app.minio_client import put_object
-from app.rate_limit import check_rate_limit
+from shortbraid.server.auth import authenticate
+from shortbraid.server.config import get_settings
+from shortbraid.server.db import get_pool
+from shortbraid.server.logging_config import get_logger
+from shortbraid.server.minio_client import put_object
+from shortbraid.server.rate_limit import check_rate_limit
 
 router = APIRouter(prefix="/api/v1", tags=["ingest"])
 log = get_logger(__name__)
@@ -47,29 +47,23 @@ class IngestResponse(BaseModel):
     accepted_at: str
 
 
-@router.post("/ingest/", response_model=IngestResponse, status_code=status.HTTP_202_ACCEPTED)
-async def ingest(
-    body: IngestRequest,
-    request: Request,
-    auth_ctx: dict = Depends(authenticate),
+async def _process_ingest(
+    raw_bytes: bytes,
+    source: str,
+    content_type: str,
+    metadata: dict[str, Any],
+    auth_ctx: dict,
 ) -> IngestResponse:
-    """Accept a document for ingestion. Returns 202 immediately; crushing is async."""
-    settings = get_settings()
-
-    # --- Rate limit (per API key) ---
-    await check_rate_limit(auth_ctx["api_key_id"], "ingest", settings.rate_limit_rpm)
-
-    # --- Build the raw payload ---
-    raw_bytes = body.content.encode("utf-8")
     if not raw_bytes:
         raise HTTPException(status_code=400, detail="Empty content")
 
+    settings = get_settings()
     doc_id = uuid.uuid4()
     object_key = f"documents/{doc_id}.json"
 
     # --- Upload to MinIO ---
     try:
-        s3_uri = put_object(object_key, raw_bytes, content_type=body.content_type)
+        s3_uri = put_object(object_key, raw_bytes, content_type=content_type)
     except Exception as exc:
         log.exception("minio_put_failed", document_id=str(doc_id), error=str(exc))
         raise HTTPException(status_code=502, detail=f"Object storage failure: {exc}")
@@ -85,16 +79,17 @@ async def ingest(
             VALUES ($1, $2, $3, $4, 'pending', $5, $6, now(), now())
             """,
             doc_id,
-            body.source,
-            body.content_type,
+            source,
+            content_type,
             len(raw_bytes),
             s3_uri,
-            body.metadata,
+            metadata,
         )
 
     # --- Enqueue crush job ---
-    arq_pool = await create_pool(RedisSettings(host=settings.redis_host, port=settings.redis_port))
     try:
+        redis_settings = RedisSettings(host=settings.redis_host, port=settings.redis_port)
+        arq_pool = await create_pool(redis_settings)
         job = await arq_pool.enqueue_job(
             "crush_document",
             document_id=str(doc_id),
@@ -127,9 +122,54 @@ async def ingest(
     )
 
 
-@router.get("/ingest/{document_id}")
-async def get_document(document_id: str, auth_ctx: dict = Depends(authenticate)) -> dict:
-    """Check ingestion status."""
+@router.post("/ingest", response_model=IngestResponse, status_code=status.HTTP_202_ACCEPTED)
+@router.post("/ingest/", response_model=IngestResponse, status_code=status.HTTP_202_ACCEPTED)
+async def ingest(
+    request: Request,
+    auth_ctx: dict = Depends(authenticate),
+    file: Optional[UploadFile] = File(default=None),
+    source: Optional[str] = Form(default=None),
+) -> IngestResponse:
+    """Accept a document for ingestion via JSON or multipart upload. Returns 202."""
+    settings = get_settings()
+
+    # --- Rate limit (per API key) ---
+    await check_rate_limit(auth_ctx["api_key_id"], "ingest", settings.rate_limit_rpm)
+
+    content_type_header = request.headers.get("content-type", "")
+
+    # Multipart file upload
+    if "multipart/form-data" in content_type_header or file is not None:
+        if file is None:
+            raise HTTPException(status_code=400, detail="Missing file in multipart upload")
+        raw_bytes = await file.read()
+        src = source or file.filename or "file_upload"
+        ctype = file.content_type or "application/octet-stream"
+        meta = {"filename": file.filename}
+        return await _process_ingest(raw_bytes, src, ctype, meta, auth_ctx)
+
+    # JSON body upload
+    try:
+        body_json = await request.json()
+        body = IngestRequest(**body_json)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Invalid JSON payload: {exc}")
+
+    return await _process_ingest(
+        body.content.encode("utf-8"),
+        body.source,
+        body.content_type,
+        body.metadata,
+        auth_ctx,
+    )
+
+
+async def _fetch_doc_status(document_id: str) -> dict:
+    try:
+        doc_uuid = uuid.UUID(document_id)
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=400, detail="Invalid document_id UUID format")
+
     pool = get_pool()
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
@@ -138,7 +178,7 @@ async def get_document(document_id: str, auth_ctx: dict = Depends(authenticate))
                    raw_sha256, crushed_sha256, error, created_at, updated_at
             FROM documents WHERE id=$1
             """,
-            uuid.UUID(document_id),
+            doc_uuid,
         )
     if row is None:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -154,3 +194,10 @@ async def get_document(document_id: str, auth_ctx: dict = Depends(authenticate))
         "created_at": row["created_at"].isoformat(),
         "updated_at": row["updated_at"].isoformat(),
     }
+
+
+@router.get("/ingest/{document_id}")
+@router.get("/documents/{document_id}")
+async def get_document(document_id: str, auth_ctx: dict = Depends(authenticate)) -> dict:
+    """Check ingestion status."""
+    return await _fetch_doc_status(document_id)

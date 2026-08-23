@@ -19,10 +19,10 @@ from typing import Optional
 
 from fastapi import HTTPException, status
 
-from app.config import get_settings
-from app.logging_config import get_logger
-from app.metrics import rate_limit_rejections_total
-from app.redis_client import get_redis
+from shortbraid.server.config import get_settings
+from shortbraid.server.logging_config import get_logger
+from shortbraid.server.metrics import rate_limit_rejections_total
+from shortbraid.server.redis_client import get_redis
 
 log = get_logger(__name__)
 
@@ -46,16 +46,22 @@ async def check_rate_limit(
     pipe = redis.pipeline()
     pipe.zremrangebyscore(key, 0, cutoff)  # 1. evict old
     pipe.zcard(key)  # 2. count current
-    pipe.zadd(key, {str(now): now})  # 3. add (optimistically)
-    pipe.expire(key, window_seconds + 5)  # 4. TTL cleanup
+    pipe.zrange(key, 0, 0, withscores=True)  # 3. get oldest element in window
+    pipe.zadd(key, {str(now): now})  # 4. add (optimistically)
+    pipe.expire(key, window_seconds + 5)  # 5. TTL cleanup
     results = await pipe.execute()
 
     count = results[1]
+    oldest_elements = results[2]
     if count >= limit:
         # Rollback the optimistic add
         await redis.zrem(key, str(now))
         rate_limit_rejections_total.labels(endpoint=endpoint).inc()
-        retry_after = int(window_seconds - (now - cutoff))
+        if oldest_elements:
+            oldest_ts = float(oldest_elements[0][1])
+            retry_after = max(1, int(oldest_ts + window_seconds - now))
+        else:
+            retry_after = window_seconds
         log.warning(
             "rate_limited",
             identifier=identifier,
@@ -66,5 +72,5 @@ async def check_rate_limit(
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=f"Rate limit exceeded: {limit} req/min",
-            headers={"Retry-After": str(max(retry_after, 1))},
+            headers={"Retry-After": str(retry_after)},
         )

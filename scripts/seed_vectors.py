@@ -23,8 +23,8 @@ import time
 # Allow running as a script (not a package) — must come before app.* imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.db import close_pool, init_pool  # noqa: E402
-from app.logging_config import configure_logging, get_logger  # noqa: E402
+from shortbraid.server.db import close_pool, init_pool  # noqa: E402
+from shortbraid.server.logging_config import configure_logging, get_logger  # noqa: E402
 
 
 async def seed(count: int = 100_000, batch_size: int = 1000) -> None:

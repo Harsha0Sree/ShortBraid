@@ -19,21 +19,20 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from app.auth import authenticate
-from app.cache import cache_get, cache_set
-from app.config import get_settings
-from app.db import get_pool
-from app.logging_config import get_logger
-from app.llm.ccr import run_ccr_loop
-from app.llm.openai_client import OpenAIError, create_chat_completion, stream_chat_completion
-from app.metrics import (
+from shortbraid.server.auth import authenticate
+from shortbraid.server.cache import cache_get, cache_set
+from shortbraid.server.config import get_settings
+from shortbraid.server.db import get_pool
+from shortbraid.server.logging_config import get_logger
+from shortbraid.server.llm.ccr import run_ccr_loop
+from shortbraid.server.llm.openai_client import OpenAIError, create_chat_completion, stream_chat_completion
+from shortbraid.server.metrics import (
     api_latency_seconds,
-    in_flight_requests,
     llm_cost_usd_total,
     llm_requests_total,
     tokens_saved_total,
 )
-from app.rate_limit import check_rate_limit
+from shortbraid.server.rate_limit import check_rate_limit
 
 router = APIRouter(tags=["chat"])
 log = get_logger(__name__)
@@ -54,7 +53,7 @@ class ChatCompletionRequest(BaseModel):
     temperature: float = 0.2
     stream: bool = False
     max_tokens: Optional[int] = None
-    # Headroom extension: opt into CCR agentic retrieval
+    # ShortBraid extension: opt into CCR agentic retrieval
     use_ccr: bool = Field(default=False, description="Enable Reversible Compression retrieval loop")
     context_id: Optional[str] = None
     top_k: int = Field(default=5, ge=1, le=20)
@@ -68,7 +67,7 @@ async def _retrieve_context(query: str, top_k: int) -> list[dict[str, Any]]:
     Embed the query and run a vector search against `chunks.embedding`.
     Returns [{"chunk_id", "crushed_text", "score"}, ...]
     """
-    from app.llm.openai_client import create_embedding
+    from shortbraid.server.llm.openai_client import create_embedding
 
     try:
         q_vec = await create_embedding(query)
@@ -170,7 +169,6 @@ async def chat_completions(
     """OpenAI-compatible chat completions endpoint."""
     request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
     started = time.time()
-    in_flight_requests.inc()
 
     settings = get_settings()
 
@@ -234,7 +232,6 @@ async def chat_completions(
                             yield chunk
                     finally:
                         elapsed_ms = int((time.time() - started) * 1000)
-                        in_flight_requests.dec()
                         api_latency_seconds.labels(endpoint="chat", method="POST").observe(
                             elapsed_ms / 1000.0
                         )
@@ -338,7 +335,6 @@ async def chat_completions(
                         yield chunk
                 finally:
                     elapsed_ms = int((time.time() - started) * 1000)
-                    in_flight_requests.dec()
                     api_latency_seconds.labels(endpoint="chat", method="POST").observe(
                         elapsed_ms / 1000.0
                     )
@@ -420,5 +416,3 @@ async def chat_completions(
             error=str(exc)[:500],
         )
         raise HTTPException(status_code=500, detail="Internal error")
-    finally:
-        in_flight_requests.dec()

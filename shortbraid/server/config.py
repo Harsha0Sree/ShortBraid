@@ -27,7 +27,7 @@ class Settings(BaseSettings):
 
     # --- App ---
     app_env: str = Field(default="development")
-    app_name: str = Field(default="headroom-ccr")
+    app_name: str = Field(default="shortbraid")
     app_host: str = Field(default="0.0.0.0")
     app_port: int = Field(default=8000)
     log_level: str = Field(default="INFO")
@@ -35,9 +35,9 @@ class Settings(BaseSettings):
     # --- Postgres ---
     postgres_host: str = Field(default="localhost")
     postgres_port: int = Field(default=5432)
-    postgres_user: str = Field(default="headroom")
-    postgres_password: str = Field(default="headroom_secret")
-    postgres_db: str = Field(default="headroom")
+    postgres_user: str = Field(default="shortbraid")
+    postgres_password: str = Field(default="shortbraid_secret")
+    postgres_db: str = Field(default="shortbraid")
     pg_pool_min: int = Field(default=5, ge=1)
     pg_pool_max: int = Field(default=20, ge=2)
 
@@ -53,7 +53,7 @@ class Settings(BaseSettings):
     minio_endpoint: str = Field(default="localhost:9000")
     minio_access_key: str = Field(default="minioadmin")
     minio_secret_key: str = Field(default="minioadmin")
-    minio_bucket: str = Field(default="headroom-ingest")
+    minio_bucket: str = Field(default="shortbraid-ingest")
     minio_secure: bool = Field(default=False)
     minio_region: str = Field(default="us-east-1")
 
@@ -69,6 +69,11 @@ class Settings(BaseSettings):
     # --- Worker ---
     worker_concurrency: int = Field(default=10)
     worker_max_jobs: int = Field(default=50)
+
+    # --- Admin / Security ---
+    admin_api_key: Optional[str] = Field(
+        default=None, description="Admin token required in production"
+    )
 
     # --- LLM cost (USD per 1K tokens) ---
     cost_input_per_1k: float = Field(default=0.000150)

@@ -11,8 +11,8 @@ from __future__ import annotations
 import asyncpg
 from typing import Optional
 
-from app.config import get_settings
-from app.logging_config import get_logger
+from shortbraid.server.config import get_settings
+from shortbraid.server.logging_config import get_logger
 
 log = get_logger(__name__)
 

@@ -19,14 +19,14 @@ import time
 import uuid
 from typing import Any
 
-from app.config import get_settings
-from app.db import get_pool, init_pool
-from app.logging_config import configure_logging, get_logger
-from app.llm.openai_client import OpenAIError, create_embedding
-from app.metrics import llm_cost_usd_total, queue_depth
-from app.minio_client import get_object, init_s3
-from app.redis_client import get_redis, init_redis
-from app.workers.crusher import chunk_text, crush
+from shortbraid.server.config import get_settings
+from shortbraid.server.db import get_pool, init_pool
+from shortbraid.server.logging_config import configure_logging, get_logger
+from shortbraid.server.llm.openai_client import OpenAIError, create_embedding
+from shortbraid.server.metrics import llm_cost_usd_total, queue_depth
+from shortbraid.server.minio_client import get_object, init_s3
+from shortbraid.server.redis_client import get_redis, init_redis
+from shortbraid.server.workers.crusher import chunk_text, crush
 from arq.cron import cron
 
 log = get_logger(__name__)
@@ -182,8 +182,8 @@ async def on_startup(ctx: dict[str, Any]) -> None:
 
 
 async def on_shutdown(ctx: dict[str, Any]) -> None:
-    from app.db import close_pool
-    from app.redis_client import close_redis
+    from shortbraid.server.db import close_pool
+    from shortbraid.server.redis_client import close_redis
 
     await close_redis()
     await close_pool()
@@ -198,7 +198,7 @@ async def tick_queue_depth(ctx: dict[str, Any]) -> None:
 
 
 class WorkerSettings:
-    """arq worker config — referenced by `arq app.workers.tasks.WorkerSettings`."""
+    """arq worker config — referenced by `arq shortbraid.server.workers.tasks.WorkerSettings`."""
 
     functions = [crush_document]
     on_startup = on_startup

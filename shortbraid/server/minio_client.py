@@ -16,8 +16,8 @@ import boto3
 from botocore.client import Config as BotoConfig
 from botocore.exceptions import ClientError
 
-from app.config import get_settings
-from app.logging_config import get_logger
+from shortbraid.server.config import get_settings
+from shortbraid.server.logging_config import get_logger
 
 log = get_logger(__name__)
 
@@ -39,9 +39,9 @@ def init_s3() -> object:
         region_name=settings.minio_region,
         config=BotoConfig(
             signature_version="s3v4",
-            retries={"max_attempts": 3, "mode": "standard"},
-            connect_timeout=5,
-            read_timeout=30,
+            retries={"max_attempts": 2, "mode": "standard"},
+            connect_timeout=2,
+            read_timeout=10,
         ),
     )
     log.info("s3_initialized", endpoint=settings.minio_endpoint, bucket=settings.minio_bucket)
@@ -85,3 +85,15 @@ def get_object(key: str) -> bytes:
     buf = io.BytesIO()
     client.download_fileobj(settings.minio_bucket, key, buf)
     return buf.getvalue()
+
+
+def check_s3_health() -> bool:
+    """Check connectivity to S3/MinIO bucket."""
+    try:
+        settings = get_settings()
+        client = get_s3()
+        client.head_bucket(Bucket=settings.minio_bucket)
+        return True
+    except Exception as exc:
+        log.warning("s3_health_check_failed", error=str(exc))
+        return False

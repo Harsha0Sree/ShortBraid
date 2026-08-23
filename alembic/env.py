@@ -5,7 +5,6 @@ from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
-from app.models.document import Base
 
 # Alembic Config object
 config = context.config
@@ -14,8 +13,9 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Metadata for autogenerate
-target_metadata = Base.metadata
+# Raw SQL migration mode (no ORM Base metadata)
+target_metadata = None
+
 
 
 def do_run_migrations(connection):

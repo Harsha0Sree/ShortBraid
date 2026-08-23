@@ -9,7 +9,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Response
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
-from app.metrics import REGISTRY
+from shortbraid.server.metrics import REGISTRY
 
 router = APIRouter(tags=["metrics"])
 

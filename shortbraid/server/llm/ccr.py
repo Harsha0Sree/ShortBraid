@@ -25,10 +25,10 @@ from typing import Any, AsyncIterator
 
 import asyncpg
 
-from app.db import get_pool
-from app.logging_config import get_logger
-from app.llm.openai_client import OpenAIError, create_chat_completion, stream_chat_completion
-from app.metrics import llm_requests_total
+from shortbraid.server.db import get_pool
+from shortbraid.server.logging_config import get_logger
+from shortbraid.server.llm.openai_client import OpenAIError, create_chat_completion
+from shortbraid.server.metrics import llm_requests_total
 
 log = get_logger(__name__)
 
@@ -64,17 +64,39 @@ CCR_TOOLS = [RETRIEVE_ORIGINAL_TEXT_TOOL]
 
 
 async def _fetch_original_text(chunk_id: str) -> str:
-    """Resolve chunk_id → original_text from Postgres."""
+    """Resolve chunk_id → original_text from Postgres or MinIO object storage."""
     pool = get_pool()
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
-            "SELECT original_text, raw_text FROM chunks WHERE id = $1",
+            """
+            SELECT c.original_text, c.raw_text, d.minio_object
+            FROM chunks c
+            JOIN documents d ON c.document_id = d.id
+            WHERE c.id = $1
+            """,
             uuid.UUID(chunk_id),
         )
     if row is None:
         return f"[ERROR] chunk {chunk_id} not found"
-    # Prefer original_text; fall back to raw_text (crushed) if missing
-    return row["original_text"] or row["raw_text"] or ""
+
+    # 1. Prefer original_text stored on chunk
+    if row["original_text"]:
+        return row["original_text"]
+
+    # 2. Fallback to MinIO raw document
+    if row["minio_object"]:
+        try:
+            from shortbraid.server.minio_client import get_object
+
+            s3_uri = row["minio_object"]
+            _, _, key = s3_uri.replace("s3://", "").partition("/")
+            raw_bytes = get_object(key)
+            return raw_bytes.decode("utf-8", errors="replace")
+        except Exception as exc:
+            log.warning("minio_fetch_fallback_failed", chunk_id=chunk_id, error=str(exc))
+
+    # 3. Fall back to raw_text (crushed) if uncompressed original is unavailable
+    return row["raw_text"] or ""
 
 
 async def execute_tool(tool_name: str, arguments: dict[str, Any]) -> str:
@@ -165,13 +187,17 @@ async def run_ccr_loop(
         if finish in ("stop", "length") or not msg.get("tool_calls"):
             content = msg.get("content") or ""
             if stream:
-                # For the final response, re-stream it from OpenAI so the user
-                # sees word-by-word output (Day 6 deliverable).
+
                 async def _final_stream() -> AsyncIterator[str]:
-                    async for chunk in stream_chat_completion(
-                        messages=messages, tools=None, temperature=0.2
-                    ):
-                        yield chunk
+                    chunk_payload = {
+                        "id": f"chatcmpl-{uuid.uuid4().hex[:24]}",
+                        "object": "chat.completion.chunk",
+                        "choices": [
+                            {"index": 0, "delta": {"content": content}, "finish_reason": "stop"}
+                        ],
+                    }
+                    yield f"data: {json.dumps(chunk_payload)}\n\n"
+                    yield "data: [DONE]\n\n"
 
                 return _final_stream()
 

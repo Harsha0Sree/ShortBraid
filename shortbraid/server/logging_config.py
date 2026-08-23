@@ -10,7 +10,7 @@ import sys
 
 import structlog
 
-from app.config import get_settings
+from shortbraid.server.config import get_settings
 
 
 def configure_logging() -> None:
