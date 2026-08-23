@@ -2,9 +2,9 @@
 
 import hashlib
 
-from app.auth import generate_api_key
-from app.cache import _cache_key
-from app.config import get_settings
+from shortbraid.server.auth import generate_api_key
+from shortbraid.server.cache import _cache_key
+from shortbraid.server.config import get_settings
 
 
 def test_settings_loads_defaults():

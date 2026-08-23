@@ -9,7 +9,7 @@ def test_root_endpoint(app):
         resp = client.get("/")
         assert resp.status_code == 200
         body = resp.json()
-        assert body["name"] == "Headroom CCR"
+        assert body["name"] == "ShortBraid"
         assert body["health"] == "/health"
 
 
@@ -20,7 +20,7 @@ def test_health_requires_backing_services(app):
         # In CI without postgres, this will be 503; with stack up, 200
         assert resp.status_code in (200, 503)
         body = resp.json()
-        assert "db" in body and "redis" in body
+        assert "db" in body and "redis" in body and "minio" in body
 
 
 def test_ingest_requires_auth(app):
