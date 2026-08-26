@@ -2,10 +2,41 @@
 name = "shortbraid"
 version = "0.2.0"
 description = "Production-grade LLM context compression, reversible retrieval (CCR), transparent proxy & agent memory"
+readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
-authors = [{ name = "ShortBraid Team" }]
-readme = "README.md"
+authors = [{ name = "ShortBraid Team", email = "team@shortbraid.dev" }]
+maintainers = [{ name = "ShortBraid Team", email = "team@shortbraid.dev" }]
+keywords = [
+    "llm",
+    "context-compression",
+    "ccr",
+    "prompt-caching",
+    "fastapi",
+    "ai-agents",
+    "token-optimization",
+    "mcp",
+    "reversible-compression",
+    "context-retrieval",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Internet :: Proxy Servers",
+    "Typing :: Typed",
+]
 
 dependencies = [
     # Core CLI & utilities
@@ -50,18 +81,31 @@ dev = [
     "locust>=2.27.0",
     "mypy>=1.10.0",
     "tiktoken>=0.7.0",
+    "build>=1.2.0",
+    "twine>=5.0.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/Harsha0Sree/ShortBraid"
+Documentation = "https://github.com/Harsha0Sree/ShortBraid#readme"
+Repository = "https://github.com/Harsha0Sree/ShortBraid.git"
+Issues = "https://github.com/Harsha0Sree/ShortBraid/issues"
+Changelog = "https://github.com/Harsha0Sree/ShortBraid/releases"
 
 [project.scripts]
 shortbraid = "shortbraid.cli.main:main"
 
 [build-system]
-requires = ["setuptools>=68.0"]
+requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["shortbraid*"]
+exclude = ["tests*", "scripts*", "sql*", "alembic*"]
+
+[tool.setuptools.package-data]
+shortbraid = ["py.typed"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

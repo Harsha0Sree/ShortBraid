@@ -1,5 +1,10 @@
 # ShortBraid
 
+[![PyPI version](https://img.shields.io/pypi/v/shortbraid.svg?color=blue)](https://pypi.org/project/shortbraid/)
+[![Python versions](https://img.shields.io/pypi/pyversions/shortbraid.svg)](https://pypi.org/project/shortbraid/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
 ```text
 ███████╗██╗  ██╗ ██████╗ ██████╗ ████████╗██████╗ ██████╗  █████╗ ██╗██████╗ 
 ██╔════╝██║  ██║██╔═══██╗██╔══██╗╚══██╔══╝██╔══██╗██╔══██╗██╔══██╗██║██╔══██╗

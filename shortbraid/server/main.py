@@ -20,6 +20,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
+import shortbraid
 from shortbraid.server.config import get_settings
 from shortbraid.server.db import close_pool, init_pool
 from shortbraid.server.logging_config import configure_logging, get_logger
@@ -78,7 +79,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(
     title="ShortBraid",
     description="Production-grade LLM ingestion & retrieval with Reversible Compression (CCR)",
-    version="0.1.0",
+    version=shortbraid.__version__,
     lifespan=lifespan,
     docs_url="/docs",
     redoc_url="/redoc",
@@ -156,7 +157,7 @@ app.include_router(admin.router)
 async def root() -> dict:
     return {
         "name": "ShortBraid",
-        "version": "0.1.0",
+        "version": shortbraid.__version__,
         "docs": "/docs",
         "health": "/health",
         "metrics": "/metrics",
